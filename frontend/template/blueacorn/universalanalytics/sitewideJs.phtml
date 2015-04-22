@@ -9,21 +9,21 @@
          (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
          })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+         <?php $accounts = $helper->getAccounts(); ?>
+         <?php foreach ($accounts as $account): ?>
+             ga('create', '<?php echo $account['trackingID'] ?>','auto', {'name': '<?php echo $account['name']; ?>'});
+             ga('<?php echo $account['name']; ?>.require', 'ec');
+             ga('<?php echo $account['name']; ?>.require', 'displayfeatures');
 
-         ga('create', '<?php echo Mage::getStoreConfig("google/analytics/account") ?>','auto');
-         ga('require', 'ec');
-         ga('require', 'displayfeatures');
+             <?php echo $helper->generateCurrencyInit($account['name']) ?>
+             <?php echo $helper->generateProductImpressions($account['name']) ?>
+             <?php echo $helper->generatePromoImpressions($account['name']) ?>
+             <?php echo $helper->getAction() ?>
+             ga('<?php echo $account['name']; ?>.send', 'pageview');
+         <?php endforeach; ?>
 
-         <?php echo $helper->generateCurrencyInit() ?>
-
-         <?php echo $helper->generateProductImpressions() ?>
-         <?php echo $helper->generatePromoImpressions() ?>
-
-         <?php echo $helper->getAction() ?>
-         ga('send', 'pageview');
-
-         <?php echo $helper->generateProductClickEvents() ?>
-         <?php echo $helper->generatePromoClickEvents() ?>
+         <?php echo $helper->generateProductClickEvents($accounts) ?>
+         <?php echo $helper->generatePromoClickEvents($accounts) ?>
     </script>
 <?php endif ?>
 <!-- Universal Analytics End -->

@@ -4,11 +4,14 @@
 <?php $_helper = Mage::helper('baua') ?>
 <?php $data = Mage::getModel('baua/monitor')->generateTransactionData($order); ?>
 <?php $productArray[] = array(); ?>
+<?php $accounts = $_helper->getAccounts(); ?>
 
 <?php foreach ($order->getAllVisibleItems() as $item) :?>
     <?php $result = Mage::getModel('baua/monitor')->generateProductData($item); ?>
     <?php if($result != null) : ?>
-        <?php $productArray[] = $this->JS->generateGoogleJS('ec:addProduct', $result) . "\n"; ?>
+        <?php foreach ($accounts as $account): ?>
+            <?php $productArray[] = $this->JS->generateGoogleJS($account['name'].'.ec:addProduct', $result) . "\n"; ?>
+        <?php endforeach; ?>
     <?php endif; ?>
 <?php endforeach; ?>
 
@@ -20,8 +23,10 @@
                 <?php echo $product; ?>
             <?php endif; ?>
         <?php endforeach; ?>
-        <?php echo $this->JS->generateGoogleJS('ec:setAction', 'purchase', $data) . "\n"; ?>
-        <?php echo $this->JS->generateGoogleJS('send', 'pageview')?>
+        <?php foreach ($accounts as $account): ?>
+            <?php echo $this->JS->generateGoogleJS($account['name'].'.ec:setAction', 'purchase', $data) . "\n"; ?>
+            <?php echo $this->JS->generateGoogleJS($account['name'].'.send', 'pageview')?>
+        <?php endforeach; ?>
     </script>
 <?php endif ?>
 <!-- Universal Analytics Order Success End -->

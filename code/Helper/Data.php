@@ -6,10 +6,10 @@ class BlueAcorn_UniversalAnalytics_Helper_Data extends Mage_Core_Helper_Abstract
     protected $_translationArray = array();
 
 
-    public function generateProductImpressions() {
+    public function generateProductImpressions($name) {
         $monitor = Mage::getSingleton('baua/monitor');
 
-        return $monitor->generateProductImpressions();
+        return $monitor->generateProductImpressions($name);
     }
 
     public function generatePromoImpressions() {
@@ -18,10 +18,10 @@ class BlueAcorn_UniversalAnalytics_Helper_Data extends Mage_Core_Helper_Abstract
         return $monitor->generatePromoImpressions();
     }
 
-    public function generateProductClickEvents() {
+    public function generateProductClickEvents($accounts) {
         $monitor = Mage::getSingleton('baua/monitor');
 
-        return $monitor->generateProductClickEvents();
+        return $monitor->generateProductClickEvents($accounts);
     }
 
     public function generatePromoClickEvents() {
@@ -30,10 +30,10 @@ class BlueAcorn_UniversalAnalytics_Helper_Data extends Mage_Core_Helper_Abstract
         return $monitor->generatePromoClickEvents();
     }
 
-    public function getAction() {
+    public function getAction($name) {
         $monitor = Mage::getSingleton('baua/monitor');
 
-        return $monitor->getAction();
+        return $monitor->getAction($name);
     }
 
 
@@ -96,10 +96,10 @@ class BlueAcorn_UniversalAnalytics_Helper_Data extends Mage_Core_Helper_Abstract
         return $listName;
     }
 
-    public function generateCurrencyInit() {
+    public function generateCurrencyInit($name) {
         $monitor = Mage::getSingleton('baua/monitor');
 
-        return $monitor->generateCurrencyInit();
+        return $monitor->generateCurrencyInit($name);
     }
 
     /**
@@ -131,5 +131,26 @@ class BlueAcorn_UniversalAnalytics_Helper_Data extends Mage_Core_Helper_Abstract
     public function isActive()
     {
         return (bool) Mage::getStoreConfig('google/baua/active');
+    }
+
+    /**
+     * Returns the GA accounts
+     * @return array
+     */
+    public function getAccounts()
+    {
+        $accounts = array();
+        $trackingIDs = explode(',', Mage::getStoreConfig("google/analytics/account"));
+        $i = 0;
+        foreach ($trackingIDs as $trackingID) {
+            $name = 'trackingID'.$i;
+            $accounts[] = array(
+                'name' => $name,
+                'trackingID' => trim($trackingID)
+            );
+            $i++;
+        }
+
+        return $accounts;
     }
 }

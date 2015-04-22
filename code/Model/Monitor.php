@@ -26,33 +26,33 @@ class BlueAcorn_UniversalAnalytics_Model_Monitor {
         $this->JS = Mage::getSingleton('baua/js');
     }
 
-    public function generateProductImpressions() {
-        return $this->generateImpressionJSList('addImpression', $this->productImpressionList);
+    public function generateProductImpressions($name) {
+        return $this->generateImpressionJSList('addImpression', $this->productImpressionList, $name);
     }
 
-    public function generateProductClickEvents() {
-        return $this->generateProductClickList();
+    public function generateProductClickEvents($name) {
+        return $this->generateProductClickList($name);
     }
 
-    public function generatePromoImpressions() {
-        return $this->generateImpressionJSList('addPromo', $this->promoImpressionList);
+    public function generatePromoImpressions($name) {
+        return $this->generateImpressionJSList('addPromo', $this->promoImpressionList, $name);
     }
 
-    public function generatePromoClickEvents() {
-        return $this->generatePromoClickList();
+    public function generatePromoClickEvents($accounts) {
+        return $this->generatePromoClickList($accounts);
     }
 
     public function setAction($action) {
         $this->action = $action;
     }
 
-    public function getAction() {
+    public function getAction($name) {
         if (isset($this->action)) {
-            return $this->JS->generateGoogleJS('ec:setAction', $this->action);
+            return $this->JS->generateGoogleJS($name.'.ec:setAction', $this->action);
         }
     }
 
-    public function generateCurrencyInit() {
+    public function generateCurrencyInit($name) {
         $currencyCode = Mage::app()->getStore()->getCurrentCurrencyCode();
         $allowedCodes = $this->helper->getAllowedCurrencyCodes();
 
@@ -60,7 +60,7 @@ class BlueAcorn_UniversalAnalytics_Model_Monitor {
             $currencyCode = 'USD';
         }
 
-        return $this->JS->generateGoogleJS('set', '&cu', $currencyCode);
+        return $this->JS->generateGoogleJS($name.'.set', '&cu', $currencyCode);
     }
 
     /**
@@ -240,7 +240,7 @@ class BlueAcorn_UniversalAnalytics_Model_Monitor {
         return (string)Mage::helper('directory')->currencyConvert($value, $baseCurrencyCode, $currentCurrencyCode);
     }
 
-    protected function generateImpressionJSList($action, $list) {
+    protected function generateImpressionJSList($action, $list, $name) {
         $impressionList = '';
         $impressedList = Array();
 
@@ -255,7 +255,7 @@ class BlueAcorn_UniversalAnalytics_Model_Monitor {
                     // filtered out.
                     $item['position'] = $position++;
                     $item = $this->filterObjectArray($item, $newAction);
-                    $impressionList .= $this->JS->generateGoogleJS('ec:' . $newAction, $item);
+                    $impressionList .= $this->JS->generateGoogleJS($name.'.ec:' . $newAction, $item);
                 }
             }
         }
@@ -276,24 +276,29 @@ class BlueAcorn_UniversalAnalytics_Model_Monitor {
         return $finalArray;
     }
 
-    protected function generatePromoClickList() {
+    protected function generatePromoClickList($accounts) {
         $text = '';
 
         foreach ($this->promoImpressionList as $key => $item) {
             foreach ($item as $alias => $promoData) {
 
-                $promoText = $this->JS->generateGoogleJS('ec:addPromo', $promoData);
-                $action = $this->JS->generateGoogleJS('ec:setAction', 'promo_click');
-                $send = $this->JS->generateGoogleJS('send', 'event', 'Promotions', 'click');
+                $promoText = array();
+                $action = array();
+                $send = array();
+                foreach ($accounts as $account) {
+                    $promoText[] = $this->JS->generateGoogleJS($account['name'].'.ec:addPromo', $promoData);
+                    $action[] = $this->JS->generateGoogleJS($account['name'].'.ec:setAction', 'promo_click');
+                    $send[] = $this->JS->generateGoogleJS($account['name'].'.send', 'event', 'Promotions', 'click');
+                }
 
-                $text .= $this->JS->attachForeachObserve('*[banner-alias="' . $alias . '"] a', $promoText . $action . $send);
+                $text .= $this->JS->attachForeachObserve('*[banner-alias="' . $alias . '"] a', implode('', $promoText) . implode('', $action) . implode('', $send));
             }
         }
 
         return $text;
     }
 
-    protected function generateProductClickList() {
+    protected function generateProductClickList($accounts) {
         $text = '';
         $urlList = Array();
 
@@ -317,49 +322,61 @@ class BlueAcorn_UniversalAnalytics_Model_Monitor {
                 }
 
                 $item = $this->filterObjectArray($item, 'addProduct');
+                $product = array();
+                $action = array();
+                $send = array();
+                foreach ($accounts as $account) {
+                    $product[] = $this->JS->generateGoogleJS($account['name'].'.ec:addProduct', $item);
+                    $action[] = $this->JS->generateGoogleJS($account['name'].'.ec:setAction', 'click', array('list' => $listName));
+                    $send[] = $this->JS->generateGoogleJS($account['name'].'.send', 'event', $listName, 'click');
+                }
+                $text .= $this->JS->attachForeachObserve('a[href="' . $url . '"]', implode('', $product) . implode('', $action) . implode('', $send));
 
-                $product = $this->JS->generateGoogleJS('ec:addProduct', $item);
-                $action = $this->JS->generateGoogleJS('ec:setAction', 'click', array('list'=>$listName));
-                $send = $this->JS->generateGoogleJS('send', 'event', $listName, 'click');
-
-                $text .= $this->JS->attachForeachObserve('a[href="' . $url . '"]', $product . $action . $send);
 
                 if (in_array($item['id'], $this->quoteList)) {
                     $localQuoteList = $this->findQuoteProduct($item['id']);
-
-                    $removeAction = $this->JS->generateGoogleJS('ec:setAction', 'remove');
-                    $send = $this->JS->generateGoogleJS('send', 'event', $listName, 'click', 'removeFromCart');
-
+                    $removeAction = array();
+                    $send = array();
+                    foreach ($accounts as $account) {
+                        $removeAction[] = $this->JS->generateGoogleJS($account['name'].'.ec:setAction', 'remove');
+                        $send[] = $this->JS->generateGoogleJS($account['name'].'.send', 'event', $listName, 'click', 'removeFromCart');
+                    }
                     foreach ($localQuoteList as $quoteId) {
 
                         $text .= $this->JS->attachForeachObserve(
                             'a[href*="checkout/cart"][href*="elete/id/' . $quoteId . '"]',
-                            $product . $removeAction . $send
+                            implode('', $product) . implode('', $removeAction) . implode('', $send)
                         );
                     }
                 }
 
-                $action = $this->JS->generateGoogleJS('ec:setAction', 'add');
-                $send = $this->JS->generateGoogleJS('send', 'event', 'UX', 'click', 'add to cart');
-                $currency = $this->JS->generateGoogleJS('set', '&cu', Mage::app()->getStore()->getCurrentCurrencyCode());
-
+                $action = array();
+                $send = array();
+                $currency = array();
+                foreach ($accounts as $account) {
+                    $action[] = $this->JS->generateGoogleJS($account['name'].'.ec:setAction', 'add');
+                    $send[] = $this->JS->generateGoogleJS($account['name'].'.send', 'event', 'UX', 'click', 'add to cart');
+                    $currency[] = $this->JS->generateGoogleJS($account['name'].'.set', '&cu', Mage::app()->getStore()->getCurrentCurrencyCode());
+                }
 
                 $text .= $this->JS->attachForeachObserve(
                     'button[onClick*="checkout/cart/add"][onClick*="product/' . $item['id'] . '"]',
-                    $currency . $product . $action . $send
+                    implode('', $currency) . implode('', $product) . implode('', $action) . implode('', $send)
                 );
 
                 if ($listName == 'Detail') {
                     $productList = '';
                     if (isset($this->productImpressionList['Grouped'])) {
                         foreach ($this->productImpressionList['Grouped'] as $groupItem) {
-                            $productList .= $this->JS->generateGoogleJS('ec:addProduct', $groupItem);
+                            foreach ($accounts as $account) {
+                                $productList .= $this->JS->generateGoogleJS($account['name'].'.ec:addProduct', $groupItem);
+                            }
                         }
                     }
 
                     $text .= $this->JS->attachForeachObserve(
                         'form[action*="checkout/cart/add"][action*="product/' . $item['id'] . '"] button.btn-cart',
-                        $currency . $product . $productList . $action . $send
+                        implode('', $currency) . implode('', $product) . implode('', $productList) . implode('', $action) . implode('', $send)
                     );
                 }
 

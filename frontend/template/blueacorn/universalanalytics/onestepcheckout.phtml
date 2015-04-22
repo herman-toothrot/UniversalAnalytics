@@ -3,11 +3,14 @@
 <?php $itemsCollection = Mage::getSingleton('checkout/session')->getQuote()->getItemsCollection(); ?>
 <?php $_helper = Mage::helper('baua') ?>
 <?php $productArray = array(); ?>
+<?php $accounts = $_helper->getAccounts(); ?>
 <?php if($_helper->isActive()): ?>
     <?php foreach ($itemsCollection as $item) :?>
         <?php $result = Mage::getModel('baua/monitor')->generateProductData($item); ?>
         <?php if($result != null) : ?>
-            <?php $productArray[] = $this->JS->generateGoogleJS('ec:addProduct', $result) . "\n"; ?>
+            <?php foreach ($accounts as $account): ?>
+                <?php $productArray[] = $this->JS->generateGoogleJS($account['name'].'.ec:addProduct', $result) . "\n"; ?>
+            <?php endforeach; ?>
         <?php endif; ?>
     <?php endforeach; ?>
 
@@ -17,8 +20,10 @@
         <?php foreach($productArray as $product) : ?>
             <?php echo $product; ?>
         <?php endforeach; ?>
-        <?php echo $this->JS->generateGoogleJS('ec:setAction', 'checkout', Array('step' => 1)); ?>
-        <?php echo $this->JS->generateGoogleJS('send', 'pageview'); ?>
+        <?php foreach ($accounts as $account): ?>
+            <?php echo $this->JS->generateGoogleJS($account['name'].'.ec:setAction', 'checkout', Array('step' => 1)); ?>
+            <?php echo $this->JS->generateGoogleJS($account['name'].'.send', 'pageview'); ?>
+        <?php endforeach; ?>
 
         /**
          * For some reason, magento never actually sets 'login' as a
@@ -38,30 +43,36 @@
         checkout.gotoSection = function(section, reloadProgressBlock) {
 
             if (this.currentStep == 'login') {
-                ga('ec:setAction', 'checkout_option', {
-                    'step': this.steps.indexOf(this.currentStep)+1,
-                    'option': this.method
-                });
-                ga('send', 'event', 'Checkout', 'Option');
+                <?php foreach ($accounts as $account): ?>
+                    ga('<?php echo $account['name'] ?>.ec:setAction', 'checkout_option', {
+                        'step': this.steps.indexOf(this.currentStep)+1,
+                        'option': this.method
+                    });
+                    ga('<?php echo $account['name'] ?>.send', 'event', 'Checkout', 'Option');
+                <?php endforeach; ?>
             }
 
             if (this.currentStep == 'shipping_method') {
                 shippingMethodOption = $(shippingMethod.form).select('input[name="shipping_method"][checked]')[0];
                 shippingMethodOption = (typeof shippingMethodOption == 'undefined') ? null : shippingMethodOption.value;
-
-                ga('ec:setAction', 'checkout_option', {
-                    'step': this.steps.indexOf(this.currentStep)+1,
-                    'option': shippingMethodOption
-                });
-                ga('send', 'event', 'Checkout', 'Option');
+                <?php foreach ($accounts as $account): ?>
+                    ga('<?php echo $account['name'] ?>.ec:setAction', 'checkout_option', {
+                        'step': this.steps.indexOf(this.currentStep)+1,
+                        'option': shippingMethodOption
+                    });
+                    ga('<?php echo $account['name'] ?>.send', 'event', 'Checkout', 'Option');
+                <?php endforeach; ?>
             }
 
-
-            ga('ec:setAction','checkout', {'step': this.steps.indexOf(section)+1, 'label': section });
-            <?php foreach($productArray as $product) : ?>
-            <?php echo $product; ?>
+            <?php foreach ($accounts as $account): ?>
+                ga('<?php echo $account['name'] ?>.ec:setAction','checkout', {'step': this.steps.indexOf(section)+1, 'label': section });
             <?php endforeach; ?>
-            <?php echo $this->JS->generateGoogleJS('send', 'pageview')?>
+            <?php foreach($productArray as $product) : ?>
+                <?php echo $product; ?>
+            <?php endforeach; ?>
+            <?php foreach ($accounts as $account): ?>
+                <?php echo $this->JS->generateGoogleJS($account['name'].'.send', 'pageview')?>
+            <?php endforeach; ?>
 
             // Older versions of Magento are completely lacking the
             // currentStep variable, so we're re-implementing some of
